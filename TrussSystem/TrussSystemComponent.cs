@@ -37,15 +37,17 @@ namespace TrussSystem
         {
             pManager.AddIntegerParameter("Truss type", "", "description", GH_ParamAccess.item, 0);
             pManager.AddIntegerParameter("Typology", "", "description", GH_ParamAccess.item, 3);
-            pManager.AddIntegerParameter("Left height", "", "description", GH_ParamAccess.item, 3000);
-            pManager.AddIntegerParameter("Right height", "", "description", GH_ParamAccess.item, 3000);
-            pManager.AddIntegerParameter("Max height", "", "description", GH_ParamAccess.item, 3500);
+            pManager.AddIntegerParameter("Base type", "", "description", GH_ParamAccess.item, 0);
+            pManager.AddIntegerParameter("Support type", "", "description", GH_ParamAccess.item, 1);
             pManager.AddIntegerParameter("Span Left", "", "description", GH_ParamAccess.item, 5000);
             pManager.AddIntegerParameter("Span Right", "", "description", GH_ParamAccess.item, 5000);
+            pManager.AddIntegerParameter("Max height", "", "description", GH_ParamAccess.item, 3500);
             pManager.AddIntegerParameter("Clear height", "", "description", GH_ParamAccess.item, 2700);
-            pManager.AddIntegerParameter("Base type", "", "description", GH_ParamAccess.item, 0);
+            pManager.AddIntegerParameter("Right height", "", "description", GH_ParamAccess.item, 3000);
+            pManager.AddIntegerParameter("Left height", "", "description", GH_ParamAccess.item, 3000);
             pManager.AddIntegerParameter("Subdivision count", "", "description", GH_ParamAccess.item, 4);
-            pManager.AddIntegerParameter("Support type", "", "description", GH_ParamAccess.item, 1);
+            pManager.AddIntegerParameter("Min length", "", "description", GH_ParamAccess.item, 1500);
+            pManager.AddIntegerParameter("Max length", "", "description", GH_ParamAccess.item, 2000);
 
         }
 
@@ -79,17 +81,21 @@ namespace TrussSystem
             int baseType = 0;
             int subdCount = 0;
             int supType = 0;
+            int minLength = 0;
+            int maxLength = 0;
             if (!DA.GetData(0, ref trussType)) return;
             if (!DA.GetData(1, ref typology)) return;
-            if (!DA.GetData(2, ref clHeight)) return;
-            if (!DA.GetData(3, ref crHeight)) return;
-            if (!DA.GetData(4, ref maxHeight)) return;
-            if (!DA.GetData(5, ref spanOne)) return;
-            if (!DA.GetData(6, ref spanTwo)) return;
+            if (!DA.GetData(2, ref baseType)) return;
+            if (!DA.GetData(3, ref supType)) return;
+            if (!DA.GetData(4, ref spanOne)) return;
+            if (!DA.GetData(5, ref spanTwo)) return;
+            if (!DA.GetData(6, ref maxHeight)) return;
             if (!DA.GetData(7, ref clearHeight)) return;
-            if (!DA.GetData(8, ref baseType)) return;
-            if (!DA.GetData(9, ref subdCount)) return;
-            if (!DA.GetData(10, ref supType)) return;
+            if (!DA.GetData(8, ref crHeight)) return;
+            if (!DA.GetData(9, ref clHeight)) return;
+            if (!DA.GetData(10, ref subdCount)) return;
+            if (!DA.GetData(11, ref minLength)) return;
+            if (!DA.GetData(12, ref maxLength)) return;
 
             // initialize outputs
             List<Point3d> superiorBasePoints = new List<Point3d>();
@@ -190,6 +196,11 @@ namespace TrussSystem
             else inferiorBaseCurves = straightCurvesList;
             // Print("count {0}", inferiorBaseCurves.Count);
 
+            // compute subdivision count
+
+            List<int> computedDivisions = ComputeDivisions(superiorBaseCurves, subdCount, trussType, minLength, maxLength);
+
+
             // iterate on each base curve and divide by count
             for (int i = 0; i < superiorBaseCurves.Count; i++)
             {
@@ -203,7 +214,7 @@ namespace TrussSystem
 
                 GH_Path path = new GH_Path(i);
                 // store parameters t on top_crv for each point
-                double[] subdParameters = top_crv.DivideByCount(subdCount, true, out upperSubdPoints);
+                double[] subdParameters = top_crv.DivideByCount(computedDivisions[i], true, out upperSubdPoints);
                 for (int j = 0; j < upperSubdPoints.Length; j++)
                 {
                     if (trussType <= 1 || baseType == 0)
@@ -370,7 +381,7 @@ namespace TrussSystem
 
                     if (i % 2 == 0 && i != superiorPointsList.Count - 1)
                     {
-                        supCurve = new Line(superiorPointsList[i], superiorPointsList[i + 2]);
+                       supCurve = new Line(superiorPointsList[i], superiorPointsList[i + 2]);
                     }
 
                 }
@@ -406,7 +417,7 @@ namespace TrussSystem
                     {
                         if (i % 2 == 0)
                         {
-                            if (i != inferiorPointsList.Count - 1) infCurve = new Line(inferiorPointsList[i], inferiorPointsList[i + 2]);
+                        if (i != inferiorPointsList.Count - 1) infCurve = new Line(inferiorPointsList[i], inferiorPointsList[i + 2]);
                         }
                     }
                 }
@@ -438,6 +449,55 @@ namespace TrussSystem
             DA.SetDataList(1, superiorCurvesList);
             DA.SetDataList(2, inferiorCurvesList);
             DA.SetDataList(3, intermediateCurvesList);
+        }
+
+        private List<int> ComputeDivisions(List<Curve> superiorBaseCurves, int subdCount, int trussType, int minLength, int maxLength)
+        {
+            List<int> divisions = new List<int>();
+            double panelLength;
+            double barLength;
+
+            Interval lengthsInterval = new Interval(minLength, maxLength);
+            for (int i = 0; i < superiorBaseCurves.Count; i++)
+            {
+                int count;
+                barLength = superiorBaseCurves[i].GetLength();
+                panelLength = barLength / subdCount;
+                int minDivision = Convert.ToInt32(barLength / lengthsInterval.T0);
+
+                int maxDivision = Convert.ToInt32(barLength / lengthsInterval.T1);
+                if (lengthsInterval.IncludesParameter(panelLength))
+                {
+                    count = subdCount;
+                    if (trussType == 2) count *= 2;
+                    divisions.Add(count);
+                }
+                else if (panelLength < lengthsInterval.T0)
+                {
+                    count =Convert.ToInt32( minDivision);
+                    if (trussType == 2) count *= 2;
+
+                    divisions.Add(count);
+                }
+                else if (panelLength > lengthsInterval.T1)
+                {
+                    count = Convert.ToInt32(maxDivision);
+                    if (trussType == 2) count *= 2;
+
+                    divisions.Add(count);
+                }
+            }
+            for (int i = 0; i < divisions.Count; i++)
+            {
+                if(trussType >= 2 && divisions[i]%2==1)
+                {
+                    int tempDiv = divisions[i] + 1;
+                    divisions.RemoveAt(i);
+                    divisions.Insert(i, tempDiv);
+                }
+
+            }
+            return divisions;
         }
 
         private List<Curve> GenerateStraightCurves(Point3d clearPoint, Point3d counterClearPoint, List<Point3d> superiorBasePoints)

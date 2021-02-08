@@ -63,19 +63,9 @@ namespace TrussSystem.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap StreamList {
+        internal static System.Drawing.Bitmap portic {
             get {
-                object obj = ResourceManager.GetObject("StreamList", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap testImage {
-            get {
-                object obj = ResourceManager.GetObject("testImage", resourceCulture);
+                object obj = ResourceManager.GetObject("portic", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

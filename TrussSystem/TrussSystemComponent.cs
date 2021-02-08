@@ -24,7 +24,7 @@ namespace TrussSystem
         /// new tabs/panels will automatically be created.
         /// </summary>
         public TrussSystemComponent()
-          : base("Truss System", "TPS",
+          : base("Portic/Truss System", "TPS",
               "Description",
               "Arque Structures", "Portics")
         {
@@ -35,19 +35,21 @@ namespace TrussSystem
         /// </summary>
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
-            pManager.AddIntegerParameter("Truss type", "", "description", GH_ParamAccess.item, 0);
+            pManager.AddPlaneParameter("Input Plane", "", "", GH_ParamAccess.item, Plane.WorldXY);
             pManager.AddIntegerParameter("Typology", "", "description", GH_ParamAccess.item, 3);
-            pManager.AddIntegerParameter("Base type", "", "description", GH_ParamAccess.item, 0);
-            pManager.AddIntegerParameter("Support type", "", "description", GH_ParamAccess.item, 1);
+            pManager.AddIntegerParameter("Base Type", "", "description", GH_ParamAccess.item, 0);
+            pManager.AddIntegerParameter("Support Type", "", "description", GH_ParamAccess.item, 1);
             pManager.AddIntegerParameter("Span Left", "", "description", GH_ParamAccess.item, 5000);
             pManager.AddIntegerParameter("Span Right", "", "description", GH_ParamAccess.item, 5000);
-            pManager.AddIntegerParameter("Max height", "", "description", GH_ParamAccess.item, 3500);
-            pManager.AddIntegerParameter("Clear height", "", "description", GH_ParamAccess.item, 2700);
-            pManager.AddIntegerParameter("Right height", "", "description", GH_ParamAccess.item, 3000);
-            pManager.AddIntegerParameter("Left height", "", "description", GH_ParamAccess.item, 3000);
-            pManager.AddIntegerParameter("Subdivision count", "", "description", GH_ParamAccess.item, 4);
-            pManager.AddIntegerParameter("Min length", "", "description", GH_ParamAccess.item, 1500);
-            pManager.AddIntegerParameter("Max length", "", "description", GH_ParamAccess.item, 2000);
+            pManager.AddIntegerParameter("Max Height", "", "description", GH_ParamAccess.item, 3500);
+            pManager.AddIntegerParameter("Clear Height", "", "description", GH_ParamAccess.item, 2700);
+            pManager.AddIntegerParameter("Right Height", "", "description", GH_ParamAccess.item, 3000);
+            pManager.AddIntegerParameter("Left Height", "", "description", GH_ParamAccess.item, 3000);
+            pManager.AddIntegerParameter("Subdivision Count", "", "description", GH_ParamAccess.item, 4);
+            pManager.AddIntegerParameter("Min Length", "", "description", GH_ParamAccess.item, 1500);
+            pManager.AddIntegerParameter("Max Length", "", "description", GH_ParamAccess.item, 2000);
+            pManager.AddIntegerParameter("Portic Type", "", "description", GH_ParamAccess.item, 0);
+            pManager.AddIntegerParameter("Truss Type", "", "description", GH_ParamAccess.item, 0);
 
         }
 
@@ -58,7 +60,9 @@ namespace TrussSystem
         {
             pManager.AddCurveParameter("Columns", "", "", GH_ParamAccess.list);
             pManager.AddCurveParameter("Superior curves", "", "", GH_ParamAccess.list);
+            pManager.AddPointParameter("Superior points", "", "", GH_ParamAccess.list);
             pManager.AddCurveParameter("Inferior curves", "", "", GH_ParamAccess.list);
+            pManager.AddPointParameter("inferior points", "", "", GH_ParamAccess.list);
             pManager.AddCurveParameter("Intermediate curves", "", "", GH_ParamAccess.list);
         }
 
@@ -69,7 +73,7 @@ namespace TrussSystem
         /// to store data in output parameters.</param>
         protected override void SolveInstance(IGH_DataAccess DA)
         {
-
+            int porticType = 0;
             int trussType = 0;
             int typology = 0;
             int clHeight = 0;
@@ -83,7 +87,8 @@ namespace TrussSystem
             int supType = 0;
             int minLength = 0;
             int maxLength = 0;
-            if (!DA.GetData(0, ref trussType)) return;
+            Plane inputPlane = new Plane();
+            if (!DA.GetData(0, ref inputPlane)) return;
             if (!DA.GetData(1, ref typology)) return;
             if (!DA.GetData(2, ref baseType)) return;
             if (!DA.GetData(3, ref supType)) return;
@@ -96,6 +101,8 @@ namespace TrussSystem
             if (!DA.GetData(10, ref subdCount)) return;
             if (!DA.GetData(11, ref minLength)) return;
             if (!DA.GetData(12, ref maxLength)) return;
+            if (!DA.GetData(13, ref porticType)) return;
+            if (!DA.GetData(14, ref trussType)) return;
 
             // initialize outputs
             List<Point3d> superiorBasePoints = new List<Point3d>();
@@ -140,10 +147,10 @@ namespace TrussSystem
             int index = Array.IndexOf(columnHeights, cMinHeight);
 
             // generate superior truss base points
-            superiorBasePoints = SuperiorBasePoints(typology, spanOne, spanTwo, maxHeight, ref crHeight, ref clHeight, cMinHeight, cMaxHeight);
+            superiorBasePoints = SuperiorBasePoints(inputPlane,typology, spanOne, spanTwo, maxHeight, ref crHeight, ref clHeight, cMinHeight, cMaxHeight);
 
             // generate the columns
-            columnCurves = ColumnCurves(typology, spanOne, spanTwo, superiorBasePoints, columnCurves);
+            columnCurves = ColumnCurves(inputPlane, typology, spanOne, spanTwo, superiorBasePoints, columnCurves);
 
             // generate superior truss curve
             superiorBaseCurves = GenerateThickCurves(typology, maxHeight, crHeight, clHeight, superiorBasePoints, 0);
@@ -262,14 +269,12 @@ namespace TrussSystem
                 inferiorPoints = straightPoints;
                 inferiorBaseCurves = straightCurvesList;
             }
-
             // generate thickened inferior points
             else
             {
                 inferiorPoints = thickPoints;
                 inferiorBaseCurves = thickCurvesList;
             }
-
             List<Point3d> tempSuperiorPoints = new List<Point3d>();
             List<Point3d> tempInferiorPoints = new List<Point3d>();
             List<Curve> superiorCurvesList = new List<Curve>();
@@ -365,90 +370,112 @@ namespace TrussSystem
                 inferiorPointsList.Insert(inferiorPointsList.Count, inferiorBasePoints[4]);
             }
 
-            for (int i = 0; i < superiorPointsList.Count; i++)
-            {
-                Line supCurve = new Line();
+            //for (int i = 0; i < superiorPointsList.Count; i++)
+            //{
+            //    Line supCurve = new Line();
 
-                if (trussType != 2)
-                {
-                    if (i != superiorPointsList.Count - 1)
-                    {
-                        supCurve = new Line(superiorPointsList[i], superiorPointsList[i + 1]);
-                    }
-                }
-                else if (trussType == 2)
-                {
+            //    if (trussType != 2)
+            //    {
+            //        if (i != superiorPointsList.Count - 1)
+            //        {
+            //            supCurve = new Line(superiorPointsList[i], superiorPointsList[i + 1]);
+            //        }
+            //    }
+            //    else if (trussType == 2)
+            //    {
 
-                    if (i % 2 == 0 && i != superiorPointsList.Count - 1)
-                    {
-                       supCurve = new Line(superiorPointsList[i], superiorPointsList[i + 2]);
-                    }
+            //        if (i % 2 == 0 && i != superiorPointsList.Count - 1)
+            //        {
+            //            supCurve = new Line(superiorPointsList[i], superiorPointsList[i + 2]);
+            //        }
 
-                }
-                if (supCurve.IsValid && supCurve.Length != 0)
-                {
-                    superiorCurvesList.Add(supCurve.ToNurbsCurve());
-                }
-            }
+            //    }
+            //    if (supCurve.IsValid && supCurve.Length != 0)
+            //    {
+            //        superiorCurvesList.Add(supCurve.ToNurbsCurve());
+            //    }
+            //}
 
-            for (int i = 0; i < inferiorPointsList.Count; i++)
-            {
-                Line infCurve = new Line();
+            //for (int i = 0; i < inferiorPointsList.Count; i++)
+            //{
+            //    Line infCurve = new Line();
 
-                if (trussType <= 1)
-                {
-                    if (i != inferiorPointsList.Count - 1)
-                    {
-                        infCurve = new Line(inferiorPointsList[i], inferiorPointsList[i + 1]);
-                    }
-                }
-                else if (trussType == 2)
-                {
-                    if (baseType == 0)
-                    {
-                        if (i < 1) infCurve = new Line(inferiorPointsList[i], inferiorPointsList[i + 1]);
-                        else if (i == inferiorPointsList.Count - 2) infCurve = new Line(inferiorPointsList[i], inferiorPointsList[i + 1]);
-                        else if (i % 2 == 1)
-                        {
-                            infCurve = new Line(inferiorPointsList[i], inferiorPointsList[i + 2]);
-                        }
-                    }
-                    else
-                    {
-                        if (i % 2 == 0)
-                        {
-                        if (i != inferiorPointsList.Count - 1) infCurve = new Line(inferiorPointsList[i], inferiorPointsList[i + 2]);
-                        }
-                    }
-                }
-                else if (trussType == 3)
-                {
-                    if (baseType == 0)
-                    {
-                        if (i % 2 == 1 && i < inferiorPointsList.Count - 2) infCurve = new Line(inferiorPointsList[i], inferiorPointsList[i + 2]);
-                        else if (i <= 0 || i == inferiorPointsList.Count - 2) infCurve = new Line(inferiorPointsList[i], inferiorPointsList[i + 1]);
-                    }
-                    else
-                    {
-                        if (i % 2 == 0 && i < inferiorPointsList.Count - 1) infCurve = new Line(inferiorPointsList[i], inferiorPointsList[i + 2]);
-                    }
-                }
-                if (infCurve.IsValid && infCurve.Length != 0)
-                {
-                    inferiorCurvesList.Add(infCurve.ToNurbsCurve());
-                }
-            }
+            //    if (trussType <= 1)
+            //    {
+            //        if (i != inferiorPointsList.Count - 1)
+            //        {
+            //            infCurve = new Line(inferiorPointsList[i], inferiorPointsList[i + 1]);
+            //        }
+            //    }
+            //    else if (trussType == 2)
+            //    {
+            //        if (baseType == 0)
+            //        {
+            //            if (i < 1) infCurve = new Line(inferiorPointsList[i], inferiorPointsList[i + 1]);
+            //            else if (i == inferiorPointsList.Count - 2) infCurve = new Line(inferiorPointsList[i], inferiorPointsList[i + 1]);
+            //            else if (i % 2 == 1)
+            //            {
+            //                infCurve = new Line(inferiorPointsList[i], inferiorPointsList[i + 2]);
+            //            }
+            //        }
+            //        else
+            //        {
+            //            if (i % 2 == 0)
+            //            {
+            //                if (i != inferiorPointsList.Count - 1) infCurve = new Line(inferiorPointsList[i], inferiorPointsList[i + 2]);
+            //            }
+            //        }
+            //    }
+            //    else if (trussType == 3)
+            //    {
+            //        if (baseType == 0)
+            //        {
+            //            if (i % 2 == 1 && i < inferiorPointsList.Count - 2) infCurve = new Line(inferiorPointsList[i], inferiorPointsList[i + 2]);
+            //            else if (i <= 0 || i == inferiorPointsList.Count - 2) infCurve = new Line(inferiorPointsList[i], inferiorPointsList[i + 1]);
+            //        }
+            //        else
+            //        {
+            //            if (i % 2 == 0 && i < inferiorPointsList.Count - 1) infCurve = new Line(inferiorPointsList[i], inferiorPointsList[i + 2]);
+            //        }
+            //    }
+            //    if (infCurve.IsValid && infCurve.Length != 0)
+            //    {
+            //        inferiorCurvesList.Add(infCurve.ToNurbsCurve());
+            //    }
+            //}
             if (supType == 0)
             {
-                inferiorCurvesList.RemoveAt(0);
-                inferiorCurvesList.RemoveAt(inferiorCurvesList.Count - 1);
+                List<Curve> tempList = inferiorBaseCurves;
+                inferiorBaseCurves = new List<Curve>();
+                //inferiorCurvesList.RemoveAt(0);
+                //inferiorCurvesList.RemoveAt(inferiorCurvesList.Count - 1);
+                for (int i=0;i< tempList.Count;i++)
+                {
+                    double t;
+                    tempList[i].ClosestPoint(inferiorPointsList[i==0?1:inferiorPointsList.Count-2], out t);
+                    inferiorBaseCurves.Add(tempList[i].Split(t)[1]);
+                }
+                inferiorPointsList.RemoveAt(0);
+                inferiorPointsList.RemoveAt(inferiorPointsList.Count-1);
+
             }
 
+            if (porticType == 1)
+            {
+                DA.SetDataList(0, columnCurves);
+                DA.SetDataList(1, superiorBaseCurves);
+                DA.SetDataList(2, superiorPointsList);
+                DA.SetDataList(3, inferiorBaseCurves);
+                DA.SetDataList(4, inferiorPointsList);
+                DA.SetDataList(5, intermediateCurvesList);
+            }
+            else
+            {
+                DA.SetDataList(0, columnCurves);
+                DA.SetDataList(1, superiorBaseCurves);
+                DA.SetDataList(2, superiorPointsList);
 
-            DA.SetDataList(0, columnCurves);
-            DA.SetDataList(1, superiorCurvesList);
-            DA.SetDataList(2, inferiorCurvesList);
-            DA.SetDataList(3, intermediateCurvesList);
+            }
         }
 
         private List<int> ComputeDivisions(List<Curve> superiorBaseCurves, int subdCount, int trussType, int minLength, int maxLength)
@@ -645,17 +672,18 @@ namespace TrussSystem
             return baseCurves;
         }
 
-        private List<Curve> ColumnCurves(int typology, int spanOne, int spanTwo, List<Point3d> superiorBasePoints, List<Curve> columnCurves)
+        private List<Curve> ColumnCurves(Plane plane,int typology, int spanOne, int spanTwo, List<Point3d> superiorBasePoints, List<Curve> columnCurves)
         {
-            Point3d colPt1 = new Point3d(typology == 3 ? -spanOne : -spanOne / 2, 0, 0);
-            Point3d colPt2 = new Point3d(typology == 3 ? spanTwo : spanOne / 2, 0, 0);
+            Point3d colPt1 = new Point3d(typology == 3 ? plane.Origin.X-spanOne : plane.Origin.X-spanOne / 2, plane.Origin.Y, 0);
+            Point3d colPt2 = new Point3d(typology == 3 ? plane.Origin.X+spanTwo : plane.Origin.X+spanOne / 2, plane.Origin.Y, 0);
             columnCurves.Add(new Line(colPt1, superiorBasePoints[0]).ToNurbsCurve());
             columnCurves.Add(new Line(colPt2, superiorBasePoints[2]).ToNurbsCurve());
             return columnCurves;
         }
 
-        private List<Point3d> SuperiorBasePoints(int typology, int spanOne, int spanTwo, int maxHeight, ref int crHeight, ref int clHeight, int cMinHeight, int cMaxHeight)
+        private List<Point3d> SuperiorBasePoints(Plane plane, int typology, int spanOne, int spanTwo, int maxHeight, ref int crHeight, ref int clHeight, int cMinHeight, int cMaxHeight)
         {
+            
             if (typology == 1)
             {
                 if (maxHeight > spanOne * 0.8) maxHeight = Convert.ToInt32(spanOne * 0.8);
@@ -663,9 +691,9 @@ namespace TrussSystem
                 if (clHeight > spanOne * 0.7) clHeight = Convert.ToInt32(spanOne * 0.7);
             }
             List<Point3d> superiorBasePoints = new List<Point3d>();
-            Point3d pt1 = new Point3d(typology == 3 ? -spanOne : -spanOne / 2, 0, typology == 0 ? maxHeight : clHeight);
-            Point3d pt3 = new Point3d(typology == 3 ? spanTwo : spanOne / 2, 0, typology == 0 ? maxHeight : crHeight);
-            Point3d pt2 = new Point3d(typology == 2 ? (pt3.X + pt1.X) / 2 : 0, typology == 2 ? (pt3.Y + pt1.Y) / 2 : 0, typology == 2 ? (pt3.Z + pt1.Z) / 2 : maxHeight);
+            Point3d pt1 = new Point3d(typology == 3 ? plane.Origin.X-spanOne : plane.Origin.X - spanOne / 2, plane.Origin.Y, typology == 0 ? maxHeight : clHeight);
+            Point3d pt3 = new Point3d(typology == 3 ? plane.Origin.X+spanTwo : plane.Origin.X+spanOne / 2, plane.Origin.Y, typology == 0 ? maxHeight : crHeight);
+            Point3d pt2 = new Point3d((pt3.X + pt1.X) / 2, (pt3.Y + pt1.Y) / 2, typology == 2 ? (pt3.Z + pt1.Z) / 2 : maxHeight);
             superiorBasePoints.Add(pt1);
             superiorBasePoints.Add(pt2);
             superiorBasePoints.Add(pt3);
@@ -682,7 +710,7 @@ namespace TrussSystem
             {
                 // You can add image files to your project resources and access them like this:
                 //return Resources.IconForThisComponent;
-                return Properties.Resources.trussLogo;
+                return Properties.Resources.portic;
             }
         }
 

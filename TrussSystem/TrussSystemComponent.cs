@@ -35,21 +35,21 @@ namespace TrussSystem
         /// </summary>
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
-            pManager.AddPlaneParameter("Input Plane", "", "", GH_ParamAccess.item, Plane.WorldXY);
-            pManager.AddIntegerParameter("Typology", "", "description", GH_ParamAccess.item, 3);
-            pManager.AddIntegerParameter("Base Type", "", "description", GH_ParamAccess.item, 0);
-            pManager.AddIntegerParameter("Support Type", "", "description", GH_ParamAccess.item, 1);
-            pManager.AddIntegerParameter("Span Left", "", "description", GH_ParamAccess.item, 5000);
-            pManager.AddIntegerParameter("Span Right", "", "description", GH_ParamAccess.item, 5000);
-            pManager.AddIntegerParameter("Max Height", "", "description", GH_ParamAccess.item, 3500);
-            pManager.AddIntegerParameter("Clear Height", "", "description", GH_ParamAccess.item, 2700);
-            pManager.AddIntegerParameter("Right Height", "", "description", GH_ParamAccess.item, 3000);
-            pManager.AddIntegerParameter("Left Height", "", "description", GH_ParamAccess.item, 3000);
-            pManager.AddIntegerParameter("Subdivision Count", "", "description", GH_ParamAccess.item, 4);
-            pManager.AddIntegerParameter("Min Length", "", "description", GH_ParamAccess.item, 1500);
-            pManager.AddIntegerParameter("Max Length", "", "description", GH_ParamAccess.item, 2000);
-            pManager.AddIntegerParameter("Portic Type", "", "description", GH_ParamAccess.item, 0);
-            pManager.AddIntegerParameter("Truss Type", "", "description", GH_ParamAccess.item, 0);
+            pManager.AddPlaneParameter("plane", "pl", "description", GH_ParamAccess.item, Plane.WorldXY);
+            pManager.AddIntegerParameter("typology", "ty", "description", GH_ParamAccess.item, 3);
+            pManager.AddIntegerParameter("base type", "bT", "description", GH_ParamAccess.item, 0);
+            pManager.AddIntegerParameter("support type", "sT", "description", GH_ParamAccess.item, 1);
+            pManager.AddIntegerParameter("span left", "sL", "description", GH_ParamAccess.item, 5000);
+            pManager.AddIntegerParameter("span right", "sR", "description", GH_ParamAccess.item, 5000);
+            pManager.AddIntegerParameter("max height", "mH", "description", GH_ParamAccess.item, 3500);
+            pManager.AddIntegerParameter("clear height", "cH", "description", GH_ParamAccess.item, 2700);
+            pManager.AddIntegerParameter("right height", "rH", "description", GH_ParamAccess.item, 3000);
+            pManager.AddIntegerParameter("left height", "lH", "description", GH_ParamAccess.item, 3000);
+            pManager.AddIntegerParameter("subdivision count", "sC", "description", GH_ParamAccess.item, 4);
+            pManager.AddIntegerParameter("min length", "miL", "description", GH_ParamAccess.item, 1500);
+            pManager.AddIntegerParameter("max length", "maL", "description", GH_ParamAccess.item, 2000);
+            pManager.AddIntegerParameter("portic type", "pT", "description", GH_ParamAccess.item, 0);
+            pManager.AddIntegerParameter("truss type", "tT", "description", GH_ParamAccess.item, 0);
 
         }
 
@@ -58,12 +58,12 @@ namespace TrussSystem
         /// </summary>
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
-            pManager.AddCurveParameter("Columns", "", "", GH_ParamAccess.list);
-            pManager.AddCurveParameter("Superior curves", "", "", GH_ParamAccess.list);
-            pManager.AddPointParameter("Superior points", "", "", GH_ParamAccess.list);
-            pManager.AddCurveParameter("Inferior curves", "", "", GH_ParamAccess.list);
-            pManager.AddPointParameter("inferior points", "", "", GH_ParamAccess.list);
-            pManager.AddCurveParameter("Intermediate curves", "", "", GH_ParamAccess.list);
+            pManager.AddCurveParameter("columns", "cl", "description", GH_ParamAccess.list);
+            pManager.AddCurveParameter("superior curves", "sC", "description", GH_ParamAccess.list);
+            pManager.AddPointParameter("superior points", "sP", "description", GH_ParamAccess.list);
+            pManager.AddCurveParameter("inferior curves", "iC", "description", GH_ParamAccess.list);
+            pManager.AddPointParameter("inferior points", "iP", "description", GH_ParamAccess.list);
+            pManager.AddCurveParameter("intermediate curves", "iC", "description", GH_ParamAccess.list);
         }
 
         /// <summary>

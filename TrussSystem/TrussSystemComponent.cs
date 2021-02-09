@@ -446,17 +446,17 @@ namespace TrussSystem
             if (supType == 0)
             {
                 List<Curve> tempList = inferiorBaseCurves;
-                inferiorBaseCurves = new List<Curve>();
+                //inferiorBaseCurves = new List<Curve>();
                 //inferiorCurvesList.RemoveAt(0);
                 //inferiorCurvesList.RemoveAt(inferiorCurvesList.Count - 1);
-                for (int i=0;i< tempList.Count;i++)
-                {
-                    double t;
-                    tempList[i].ClosestPoint(inferiorPointsList[i==0?1:inferiorPointsList.Count-2], out t);
-                    inferiorBaseCurves.Add(tempList[i].Split(t)[1]);
-                }
-                inferiorPointsList.RemoveAt(0);
-                inferiorPointsList.RemoveAt(inferiorPointsList.Count-1);
+                //for (int i = 0; i < tempList.Count; i++)
+                //{
+                //    double t;
+                //    tempList[i].ClosestPoint(inferiorPointsList[i == 0 ? 1 : inferiorPointsList.Count - 2], out t);
+                //    inferiorBaseCurves.Add(tempList[i].Split(t)[1]);
+                //}
+                //inferiorPointsList.RemoveAt(0);
+                //inferiorPointsList.RemoveAt(inferiorPointsList.Count - 1);
 
             }
 

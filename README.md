@@ -1,3 +1,5 @@
+This was a test project
+
 # TrussSystem
 
 This project is written for Arque Estructuras Engineers, by Christian Dimitri, with the purpose to automize and optimize the structural design process.
